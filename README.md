@@ -1,3 +1,4 @@
+<img width="1308" height="871" alt="캡처" src="https://github.com/user-attachments/assets/9d475d9f-33d8-46f0-ba55-c4ec74b20dee" />
 # **⚔️ Chronicles of Eldoria — AI D\&D TRPG Web Game**
 
 > **Gemini API**와 웹 기술(HTML, Tailwind CSS, JavaScript)을 활용해 구현한 몰입감 넘치는 텍스트 기반 인터랙티브 D\&D(Dungeons & Dragons) TRPG 웹 게임입니다.
