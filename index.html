@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 던전 앤 드래곤 (TRPG) 웹 모험</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts for Fantasy Look -->
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #0d0f12;
+            color: #e2e8f0;
+        }
+        .fantasy-title {
+            font-family: 'Cinzel', serif;
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1a1c23;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #374151;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4b5563;
+        }
+        /* DM message color formatting for thoughts and dialogues */
+        .dm-thought {
+            color: #94a3b8; /* Slate gray for internal monologue/thoughts */
+            font-style: italic;
+            background: rgba(30, 41, 59, 0.4);
+            border-left: 3px solid #64748b;
+            padding: 4px 8px;
+            margin: 4px 0;
+            display: inline-block;
+            border-radius: 0 4px 4px 0;
+        }
+        .dm-dialogue {
+            color: #fde047; /* Warm amber/yellow for character speech */
+            font-weight: 500;
+        }
+        .dm-action {
+            color: #cbd5e1; /* Standard narrations */
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <header class="bg-gray-900 border-b border-amber-900/40 px-6 py-3 flex flex-wrap items-center justify-between shadow-lg z-10 shrink-0 gap-3">
+        <div class="flex items-center space-x-3">
+            <span class="text-3xl">⚔️</span>
+            <div>
+                <h1 class="fantasy-title text-xl md:text-2xl font-bold tracking-wider text-amber-500">Chronicles of Eldoria</h1>
+                <p class="text-xs text-amber-300/70">AI Dungeons & Dragons Interactive TRPG</p>
+            </div>
+        </div>
+
+        <!-- API Key Input Section in Header -->
+        <div class="flex items-center space-x-2 bg-gray-950/80 px-3 py-1.5 rounded-lg border border-amber-600/30">
+            <span class="text-xs text-amber-400 font-medium whitespace-nowrap">🔑 API 키:</span>
+            <input 
+                type="password" 
+                id="header-api-key" 
+                placeholder="Gemini API Key 입력" 
+                class="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-amber-500 w-36 md:w-48"
+            />
+            <button 
+                onclick="saveApiKey()" 
+                class="bg-amber-600 hover:bg-amber-500 text-gray-950 font-bold px-3 py-1 rounded text-xs transition shadow">
+                저장
+            </button>
+        </div>
+
+        <div class="flex items-center space-x-3">
+            <button onclick="toggleSidebar()" id="sidebar-toggle-btn" class="text-xs bg-gray-800 hover:bg-gray-700 text-amber-300 px-3 py-1.5 rounded-lg border border-gray-700 transition flex items-center space-x-1">
+                <span>⚙️</span>
+                <span class="hidden md:inline">캐릭터 설정</span>
+            </button>
+            <button onclick="resetGame()" class="text-xs bg-red-900/60 hover:bg-red-800 text-red-200 px-3 py-1.5 rounded-lg border border-red-700/50 transition flex items-center space-x-1">
+                <span>🔄</span>
+                <span class="hidden md:inline">새 모험 시작</span>
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-1 flex flex-row overflow-hidden relative w-full h-full">
+        
+        <!-- Sidebar: Character Sheet & Stats (Collapsible) -->
+        <aside id="sidebar-panel" class="w-full md:w-80 bg-gray-900/95 border-r border-amber-900/30 p-5 flex flex-col space-y-5 overflow-y-auto shrink-0 z-25 transition-all duration-300 absolute md:relative inset-y-0 left-0 shadow-2xl md:shadow-none">
+            <div class="bg-gradient-to-br from-amber-950/40 to-gray-900 border border-amber-600/30 rounded-xl p-4 shadow-inner">
+                <div class="flex items-center justify-between border-b border-amber-600/20 pb-2 mb-3">
+                    <h2 class="fantasy-title text-sm font-bold text-amber-400 uppercase tracking-widest">캐릭터 시트</h2>
+                    <button onclick="toggleSidebar()" class="text-gray-400 hover:text-white md:hidden text-xs">✕ 닫기</button>
+                </div>
+                
+                <div class="space-y-3">
+                    <div>
+                        <label class="text-xs text-gray-400 block mb-1">용사 이름</label>
+                        <input type="text" id="char-name" value="아르곤" class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-1.5 text-sm text-white focus:outline-none focus:border-amber-500" />
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-400 block mb-1">클래스 (직업)</label>
+                        <select id="char-class" class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-1.5 text-sm text-white focus:outline-none focus:border-amber-500">
+                            <option value="전사">전사 (Warrior)</option>
+                            <option value="마법사">마법사 (Wizard)</option>
+                            <option value="도적">도적 (Rogue)</option>
+                            <option value="성기사">성기사 (Paladin)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-400 block mb-1">배경 성향</label>
+                        <input type="text" id="char-trait" value="정의롭고 호기심 많은 모험가" class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-1.5 text-sm text-white focus:outline-none focus:border-amber-500" />
+                    </div>
+                </div>
+
+                <button onclick="applyCharacterChanges()" class="w-full mt-4 bg-amber-600 hover:bg-amber-500 text-gray-950 font-bold py-2 rounded-lg text-sm transition shadow-md">
+                    설정 저장 & 게임 시작
+                </button>
+            </div>
+
+            <div class="bg-gray-950/50 border border-gray-800 rounded-xl p-4 flex-1 flex flex-col justify-between">
+                <div>
+                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">📜 시스템 안내</h3>
+                    <p class="text-xs text-gray-400 leading-relaxed">
+                        상단 입력란에 Gemini API 키를 입력하고 저장한 뒤 행동을 시작해 주세요. 첫 행동을 입력하면 설정 창이 자동으로 접힙니다.
+                    </p>
+                </div>
+                <div class="mt-4 pt-3 border-t border-gray-800 text-center">
+                    <span id="connection-status" class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 mr-1.5"></span>
+                    <span id="connection-text" class="text-xs text-gray-400">준비 완료</span>
+                </div>
+            </div>
+        </aside>
+
+        <section class="flex-1 flex flex-col bg-[#0b0c10] relative overflow-hidden min-w-0 h-full">
+            
+            <!-- Chat / Story Log Container -->
+            <div id="chat-container" class="flex-1 p-4 md:p-6 overflow-y-auto space-y-6">
+                <!-- Welcome greeting placeholder -->
+                <div class="flex items-start space-x-4">
+                    <div class="w-10 h-10 rounded-xl bg-amber-600/20 border border-amber-600/40 flex items-center justify-center text-amber-400 font-bold shrink-0 shadow-lg">
+                        DM
+                    </div>
+                    <div class="flex-1 bg-gray-900/80 border border-amber-900/30 rounded-2xl p-4 md:p-5 shadow-xl text-gray-200 text-sm md:text-base leading-relaxed">
+                        <p class="text-amber-400 font-semibold mb-1">던전 마스터의 서막</p>
+                        상단에 Gemini API 키를 입력하고 저장한 뒤, 첫 번째 행동을 입력하여 안개 낀 엘도리아의 모험을 시작하세요!
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading Spinner -->
+            <div id="loading-spinner" class="hidden absolute bottom-20 left-1/2 transform -translate-x-1/2 bg-gray-900/90 border border-amber-600/40 px-4 py-2 rounded-full shadow-2xl flex items-center space-x-3 z-30">
+                <div class="w-4 h-4 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+                <span class="text-xs text-amber-300">던전 마스터가 주사위를 굴리고 운명을 엮는 중...</span>
+            </div>
+
+            <!-- Input Bar -->
+            <div class="p-4 bg-gray-900/90 border-t border-amber-900/40 backdrop-blur-md shrink-0">
+                <div class="max-w-4xl mx-auto flex items-center space-x-3">
+                    <input 
+                        type="text" 
+                        id="user-input" 
+                        placeholder="당신의 행동을 입력하세요 (예: '칼을 뽑아 조심스럽게 문을 연다')" 
+                        class="flex-1 bg-gray-950 border border-gray-700 rounded-xl px-4 py-3 text-sm md:text-base text-white focus:outline-none focus:border-amber-500 shadow-inner transition"
+                        onkeydown="if(event.key === 'Enter') sendAction()"
+                    />
+                    <button 
+                        onclick="sendAction()" 
+                        id="send-btn"
+                        class="bg-amber-600 hover:bg-amber-500 text-gray-950 font-bold px-6 py-3 rounded-xl transition shadow-lg flex items-center space-x-2 shrink-0">
+                        <span>행동하기</span>
+                        <span>⚡</span>
+                    </button>
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <script>
+        let chatHistory = [];
+        let isGenerating = false;
+        let sidebarOpen = true;
+        let userApiKey = "";
+
+        // Load saved API key on startup if available
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedKey = localStorage.getItem('gemini_dnd_api_key');
+            if (savedKey) {
+                userApiKey = savedKey;
+                document.getElementById('header-api-key').value = savedKey;
+                showToast("저장된 API 키를 불러왔습니다.", "success");
+            }
+        });
+
+        function saveApiKey() {
+            const keyInput = document.getElementById('header-api-key');
+            userApiKey = keyInput.value.trim();
+            if (!userApiKey) {
+                showToast("⚠️ API 키를 입력해주세요.", "error");
+                return;
+            }
+            localStorage.setItem('gemini_dnd_api_key', userApiKey);
+            showToast("✅ API 키가 저장되었습니다!", "success");
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar-panel');
+            sidebarOpen = !sidebarOpen;
+            if (sidebarOpen) {
+                sidebar.classList.remove('hidden');
+            } else {
+                sidebar.classList.add('hidden');
+            }
+        }
+
+        function showToast(message, type) {
+            const statusText = document.getElementById('connection-text');
+            statusText.textContent = message;
+            setTimeout(() => {
+                statusText.textContent = "준비 완료";
+            }, 3000);
+        }
+
+        function resetGame() {
+            chatHistory = [];
+            document.getElementById('chat-container').innerHTML = `
+                <div class="flex items-start space-x-4">
+                    <div class="w-10 h-10 rounded-xl bg-amber-600/20 border border-amber-600/40 flex items-center justify-center text-amber-400 font-bold shrink-0 shadow-lg">DM</div>
+                    <div class="flex-1 bg-gray-900/80 border border-amber-900/30 rounded-2xl p-4 md:p-5 shadow-xl text-gray-200 text-sm md:text-base leading-relaxed">
+                        <p class="text-amber-400 font-semibold mb-1">새로운 모험의 여백</p>
+                        모험이 초기화되었습니다. 상단에 API 키를 입력/저장한 뒤 첫 행동을 입력하세요!
+                    </div>
+                </div>
+            `;
+            const sidebar = document.getElementById('sidebar-panel');
+            sidebar.classList.remove('hidden');
+            sidebarOpen = true;
+        }
+
+        function applyCharacterChanges() {
+            const name = document.getElementById('char-name').value;
+            const job = document.getElementById('char-class').value;
+            showToast(`${name} (${job}) 설정 완료!`, "success");
+            if (sidebarOpen && window.innerWidth < 768) {
+                toggleSidebar();
+            }
+        }
+
+        async function sendAction() {
+            if (isGenerating) return;
+
+            if (!userApiKey) {
+                // Try reading from input directly
+                const keyInput = document.getElementById('header-api-key').value.trim();
+                if (keyInput) {
+                    userApiKey = keyInput;
+                    localStorage.setItem('gemini_dnd_api_key', userApiKey);
+                } else {
+                    alert("상단 입력란에 Gemini API 키를 먼저 입력하고 [저장] 버튼을 눌러주세요!");
+                    document.getElementById('header-api-key').focus();
+                    return;
+                }
+            }
+            
+            const inputField = document.getElementById('user-input');
+            const userText = inputField.value.trim();
+            if (!userText) return;
+
+            // Automatically hide sidebar on first action on mobile/smaller screens to maximize game view
+            if (sidebarOpen && window.innerWidth < 768) {
+                toggleSidebar();
+            }
+
+            inputField.value = "";
+            appendMessage(userText, 'user');
+
+            const charName = document.getElementById('char-name').value || "아르곤";
+            const charClass = document.getElementById('char-class').value || "전사";
+            const charTrait = document.getElementById('char-trait').value || "용감한 모험가";
+
+            if (chatHistory.length === 0) {
+                const systemPrompt = `당신은 숙련된 D&D(Dungeons & Dragons) 던전 마스터(DM)입니다. 모든 응답은 반드시 한국어로 작성해주세요.
+플레이어의 캐릭터 정보:
+- 이름: ${charName}
+- 직업: ${charClass}
+- 성향 및 배경: ${charTrait}
+
+규칙:
+1. 판타지 세계관 속에서 플레이어가 마주한 첫 번째 모험 장소와 긴장감 넘치는 상황을 매력적으로 묘사하고 시작하세요.
+2. 절대 마크다운 볼드체(**) 태그를 사용하지 마세요. 대신 따옴표나 색상 구분 요소를 활용하세요.
+3. 등장인물의 내면 생각이나 독백은 (괄호) 또는 생각 형태로 표현하세요.
+4. 등장인물의 직접적인 대사는 「」 또는 "" 따옴표로 감싸서 명확히 표현하세요.
+5. 플레이어의 자유로운 행동 입력을 받아 그에 따른 결과를 긴장감 있게 서술하세요. 마지막에는 항상 플레이어의 다음 선택을 유도하는 질문으로 마무리하세요.`;
+
+                chatHistory.push({
+                    role: "user",
+                    parts: [{ text: `${systemPrompt}\n\n지금 게임을 시작해 주세요. 첫 번째 상황을 묘사해주세요.` }]
+                });
+            } else {
+                chatHistory.push({
+                    role: "user",
+                    parts: [{ text: userText }]
+                });
+            }
+
+            setLoading(true);
+
+            try {
+                const modelResult = await callGeminiWithBackoff(chatHistory, userApiKey);
+                
+                chatHistory.push({
+                    role: "model",
+                    parts: modelResult.parts
+                });
+
+                appendMessage(modelResult.text, 'dm');
+            } catch (error) {
+                console.error(error);
+                chatHistory.pop();
+                appendMessage("⚠️ AI 응답 생성 중 오류가 발생했습니다. API 키가 올바른지 확인해 주세요.", 'dm');
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        async function callGeminiWithBackoff(contents, apiKey, retries = 3, delay = 1000) {
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+            
+            const payload = {
+                contents: contents
+            };
+
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        const errData = await response.json();
+                        throw new Error(errData.error?.message || `HTTP 오류! 상태 코드: ${response.status}`);
+                    }
+
+                    const result = await response.json();
+                    const candidate = result.candidates?.[0];
+                    if (candidate && candidate.content?.parts) {
+                        const textPart = candidate.content.parts.find(p => p.text);
+                        const text = textPart ? textPart.text : "응답을 처리할 수 없습니다.";
+                        return {
+                            text: text,
+                            parts: candidate.content.parts
+                        };
+                    } else {
+                        throw new Error("AI로부터 올바른 응답 구조를 받지 못했습니다.");
+                    }
+                } catch (error) {
+                    if (i === retries - 1) throw error;
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    delay *= 2;
+                }
+            }
+        }
+
+        function formatDmMessage(text) {
+            // Remove markdown bold tags **
+            let cleaned = text.replace(/\*\*/g, '');
+
+            // Escape HTML entities to prevent injection
+            cleaned = escapeHtml(cleaned);
+
+            // Format thoughts in parentheses or brackets like (생각...)
+            cleaned = cleaned.replace(/(\([^)]+\))/g, '<span class="dm-thought">$1</span>');
+
+            // Format dialogues inside 「...」 or "..." or “...”
+            cleaned = cleaned.replace(/(「[^」]+」|“[^”]+”|"[^"]+")/g, '<span class="dm-dialogue">$1</span>');
+
+            return cleaned;
+        }
+
+        function appendMessage(text, sender) {
+            const container = document.getElementById('chat-container');
+            const wrapper = document.createElement('div');
+            wrapper.className = "flex items-start space-x-4";
+
+            if (sender === 'user') {
+                wrapper.innerHTML = `
+                    <div class="flex-1"></div>
+                    <div class="bg-amber-600/20 border border-amber-600/40 rounded-2xl p-4 md:p-5 shadow-xl text-amber-100 text-sm md:text-base max-w-xl leading-relaxed">
+                        <p class="text-amber-400 font-semibold mb-1 text-right">당신의 행동</p>
+                        ${escapeHtml(text)}
+                    </div>
+                    <div class="w-10 h-10 rounded-xl bg-amber-600 text-gray-950 font-bold flex items-center justify-center shrink-0 shadow-lg">
+                        PC
+                    </div>
+                `;
+            } else {
+                const formattedContent = formatDmMessage(text);
+                wrapper.innerHTML = `
+                    <div class="w-10 h-10 rounded-xl bg-amber-600/20 border border-amber-600/40 flex items-center justify-center text-amber-400 font-bold shrink-0 shadow-lg">
+                        DM
+                    </div>
+                    <div class="flex-1 bg-gray-900/80 border border-amber-900/30 rounded-2xl p-4 md:p-5 shadow-xl text-gray-200 text-sm md:text-base leading-relaxed whitespace-pre-wrap">
+                        <p class="text-amber-400 font-semibold mb-1">던전 마스터</p>
+                        ${formattedContent}
+                    </div>
+                `;
+            }
+
+            container.appendChild(wrapper);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function setLoading(loading) {
+            isGenerating = loading;
+            const spinner = document.getElementById('loading-spinner');
+            const btn = document.getElementById('send-btn');
+            if (loading) {
+                spinner.classList.remove('hidden');
+                btn.disabled = true;
+                btn.classList.add('opacity-50');
+            } else {
+                spinner.classList.add('hidden');
+                btn.disabled = false;
+                btn.classList.remove('opacity-50');
+            }
+        }
+
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+    </script>
+</body>
+</html>
